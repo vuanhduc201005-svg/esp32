@@ -1,0 +1,262 @@
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <HTTPClient.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <ArduinoJson.h>
+#include <ESP32Servo.h>
+
+// ==================== CẤU HÌNH ====================
+
+const char* WIFI_SSID = "Wokwi-GUEST";
+const char* WIFI_PASS = "";
+
+// Cloudflare Tunnel -> Spring Boot localhost:8080
+const char* SERVER_URL = "https://meetup-transactions-pichunter-chip.trycloudflare.com/api/device/temperature";
+
+const char* API_KEY = "fish-secret-123";
+
+// ==================== GPIO ====================
+
+const int ONE_WIRE_PIN = 4;
+
+const int SERVO1_PIN = 18;   // Servo cho ăn
+const int SERVO2_PIN = 19;   // Servo phụ
+
+// ==================== THỜI GIAN ====================
+
+const unsigned long SEND_INTERVAL = 5000;
+
+// ==================== OBJECT ====================
+
+OneWire oneWire(ONE_WIRE_PIN);
+DallasTemperature sensors(&oneWire);
+
+Servo servo1;
+Servo servo2;
+
+unsigned long lastSend = 0;
+
+
+// =====================================================
+// KẾT NỐI WIFI
+// =====================================================
+
+void connectWiFi() {
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
+
+    Serial.print("Dang ket noi WiFi");
+
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+
+    Serial.println();
+    Serial.println("WiFi connected!");
+    Serial.print("IP: ");
+    Serial.println(WiFi.localIP());
+    Serial.print("RSSI: ");
+    Serial.println(WiFi.RSSI());
+}
+
+
+// =====================================================
+// ĐỌC NHIỆT ĐỘ
+// =====================================================
+
+bool readTemperature(float &out) {
+    sensors.requestTemperatures();
+    float t = sensors.getTempCByIndex(0);
+
+    // Sensor lỗi
+    if (t == DEVICE_DISCONNECTED_C) {
+        Serial.println("ERROR: DS18B20 disconnected");
+        return false;
+    }
+
+    // 85°C thường là giá trị chưa đọc đúng
+    if (t == 85.0) {
+        Serial.println("ERROR: DS18B20 returned 85C");
+        return false;
+    }
+
+    out = t;
+    return true;
+}
+
+
+// =====================================================
+// ĐIỀU KHIỂN SERVO CHO ĂN
+// =====================================================
+
+void triggerFeeder() {
+    Serial.println("Dang xoay Servo cho an...");
+
+    // Mở cửa
+    servo1.write(90);
+    delay(1000);
+
+    // Đóng cửa
+    servo1.write(0);
+    Serial.println("Da dong cua cho an");
+}
+
+
+// =====================================================
+// GỬI TEMPERATURE LÊN SPRING BOOT (HTTPS OPTIMIZED)
+// =====================================================
+
+void sendTemperature() {
+    // -----------------------------------------------
+    // 1. Đọc nhiệt độ
+    // -----------------------------------------------
+    float temperature;
+    bool sensorOK = readTemperature(temperature);
+
+    // -----------------------------------------------
+    // 2. Tạo JSON
+    // -----------------------------------------------
+    JsonDocument doc;
+    if (sensorOK) {
+        doc["temperature"] = round(temperature * 10) / 10.0;
+        doc["status"] = "ok";
+    } else {
+        doc["temperature"] = nullptr;
+        doc["status"] = "sensor_error";
+    }
+    doc["uptime"] = millis() / 1000;
+
+    String body;
+    serializeJson(doc, body);
+
+    Serial.println();
+    Serial.println("================================");
+    Serial.println("Preparing HTTP POST");
+    Serial.println("JSON: " + body);
+    Serial.println("Connecting to:");
+    Serial.println(SERVER_URL);
+
+    // -----------------------------------------------
+    // 3. Khởi tạo HTTPS Client động
+    // -----------------------------------------------
+    WiFiClientSecure *client = new WiFiClientSecure();
+    if (!client) {
+        Serial.println("ERROR: Khong du RAM de khoi tao HTTPS Client");
+        return;
+    }
+
+    // Bỏ qua kiểm tra chứng chỉ SSL
+    client->setInsecure();
+
+    HTTPClient http;
+    http.setTimeout(10000);
+
+    // -----------------------------------------------
+    // 4. Bắt đầu HTTP Session & Thêm Headers
+    // -----------------------------------------------
+    if (http.begin(*client, SERVER_URL)) {
+        http.addHeader("Content-Type", "application/json");
+        http.addHeader("X-API-KEY", API_KEY);
+        http.addHeader("Connection", "close"); // Đóng socket ngay sau khi nhận phản hồi
+
+        Serial.println("Sending POST...");
+        int code = http.POST(body);
+
+        Serial.printf("POST %s -> HTTP %d\n", body.c_str(), code);
+
+        // -----------------------------------------------
+        // 5. Xử lý phản hồi từ Server
+        // -----------------------------------------------
+        if (code > 0) {
+            Serial.print("HTTP Response Code: ");
+            Serial.println(code);
+
+            String response = http.getString();
+            Serial.println("Response:");
+            Serial.println(response);
+
+            if (code == 200) {
+                Serial.println("Backend OK!");
+                // Nếu muốn test servo khi backend nhận ok:
+                // triggerFeeder();
+            } else if (code == 201) {
+                Serial.println("Created successfully!");
+            } else if (code >= 400) {
+                Serial.println("Backend returned an error!");
+            }
+        } else {
+            Serial.println("HTTP REQUEST FAILED!");
+            Serial.print("Error: ");
+            Serial.println(http.errorToString(code));
+        }
+
+        // Đóng HTTP Client
+        http.end();
+    } else {
+        Serial.println("ERROR: http.begin() failed");
+    }
+
+    // -----------------------------------------------
+    // 6. GIẢI PHÓNG BỘ NHỚ SSL & SOCKET (CỰC KỲ QUAN TRỌNG)
+    // -----------------------------------------------
+    client->stop();
+    delete client;
+
+    Serial.println("================================");
+}
+
+
+// =====================================================
+// SETUP
+// =====================================================
+
+void setup() {
+    Serial.begin(115200);
+    delay(1000);
+
+    Serial.println();
+    Serial.println("==============================");
+    Serial.println("ESP32 STARTING...");
+    Serial.println("==============================");
+
+    // DS18B20
+    sensors.begin();
+    Serial.println("DS18B20 initialized");
+
+    // Servo
+    servo1.attach(SERVO1_PIN);
+    servo2.attach(SERVO2_PIN);
+
+    servo1.write(0);
+    servo2.write(0);
+    Serial.println("Servo initialized");
+
+    // WiFi
+    connectWiFi();
+
+    Serial.println();
+    Serial.println("ESP32 READY!");
+}
+
+
+// =====================================================
+// LOOP
+// =====================================================
+
+void loop() {
+    // Kiểm tra WiFi
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("WiFi disconnected!");
+        connectWiFi();
+    }
+
+    // Gửi dữ liệu định kỳ theo SEND_INTERVAL
+    if (millis() - lastSend >= SEND_INTERVAL) {
+        lastSend = millis();
+        sendTemperature();
+    }
+}
+//E:\arduino-cli.exe compile --fqbn esp32:esp32:esp32 E:\fishfeeder\esp32 --output-dir E:\fishfeeder\esp32\build
+.\cloudflared.exe tunnel --url http://localhost:8080

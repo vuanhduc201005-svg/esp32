@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Cho Ăn Tự Động - ESP32</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #eef2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); width: 100%; max-width: 420px; text-align: center; }
+        h2 { color: #1a73e8; margin-bottom: 20px; }
+        .temp-container { background: #f8f9fa; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
+        .temp-display { font-size: 44px; font-weight: bold; color: #2c3e50; }
+        .unit { font-size: 22px; color: #7f8c8d; }
+
+        .btn-group { display: flex; gap: 12px; }
+        .btn { flex: 1; padding: 14px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .btn-open { background-color: #28a745; color: white; }
+        .btn-open:hover { background-color: #218838; }
+        .btn-close { background-color: #dc3545; color: white; }
+        .btn-close:hover { background-color: #c82333; }
+        .btn:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+
+        .status-box { margin-top: 20px; font-size: 14px; color: #555; }
+        .countdown { font-weight: bold; color: #d9534f; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Điều Khiển Cho Ăn Tự Động</h2>
+
+    <div class="temp-container">
+        <div>Nhiệt độ bể cá hiện tại</div>
+        <div class="temp-display"><span id="tempVal">--</span> <span class="unit">°C</span></div>
+    </div>
+
+    <div class="btn-group">
+        <button id="btnOpen" class="btn btn-open" onclick="sendAction('open')">MỞ CỬA</button>
+        <button id="btnClose" class="btn btn-close" onclick="sendAction('close')" disabled>ĐÓNG NGAY</button>
+    </div>
+
+    <div class="status-box">
+        <div id="statusMsg">Trạng thái: Cửa đang ĐÓNG</div>
+        <div id="timerMsg" style="display:none; margin-top: 8px;">
+            Tự động đóng sau: <span class="countdown" id="countNum">10</span> giây
+        </div>
+    </div>
+</div>
+
+<script>
+    const BASE_URL = "https://candles-findlaw-spies-reaction.trycloudflare.com/api/devices";
+    const API_KEY = "fish-secret-123";
+
+    let countdownInterval = null;
+    let secondsLeft = 10;
+
+    async function sendAction(actionName) {
+        const statusEl = document.getElementById('statusMsg');
+        statusEl.innerText = actionName === 'open' ? "Đang gửi lệnh MỞ..." : "Đang gửi lệnh ĐÓNG...";
+
+        try {
+            const res = await fetch(`${BASE_URL}/control-servo`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-KEY': API_KEY
+                },
+                body: JSON.stringify({ action: actionName })
+            });
+
+            if (res.ok) {
+                if (actionName === 'open') {
+                    setDoorUIOpen();
+                } else {
+                    setDoorUIClose();
+                }
+            } else {
+                statusEl.innerText = "Lỗi khi gửi lệnh tới Server!";
+            }
+        } catch (err) {
+            statusEl.innerText = "Không thể kết nối Server!";
+            console.error(err);
+        }
+    }
+
+    function setDoorUIOpen() {
+        document.getElementById('statusMsg').innerText = "Trạng thái: Đã gửi lệnh MỞ (Chờ ESP32 nhận)";
+        document.getElementById('btnOpen').disabled = true;
+        document.getElementById('btnClose').disabled = false;
+        document.getElementById('timerMsg').style.display = "block";
+
+        clearInterval(countdownInterval);
+        secondsLeft = 10;
+        document.getElementById('countNum').innerText = secondsLeft;
+
+        countdownInterval = setInterval(() => {
+            secondsLeft--;
+            document.getElementById('countNum').innerText = secondsLeft;
+            if (secondsLeft <= 0) {
+                setDoorUIClose();
+            }
+        }, 1000);
+    }
+
+    function setDoorUIClose() {
+        clearInterval(countdownInterval);
+        document.getElementById('statusMsg').innerText = "Trạng thái: Cửa đang ĐÓNG";
+        document.getElementById('btnOpen').disabled = false;
+        document.getElementById('btnClose').disabled = true;
+        document.getElementById('timerMsg').style.display = "none";
+    }
+
+    async function fetchTemperature() {
+        try {
+            const res = await fetch(`${BASE_URL}/temperature`, {
+                headers: { 'X-API-KEY': API_KEY }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.temperature !== null && data.temperature !== undefined) {
+                    document.getElementById('tempVal').innerText = data.temperature;
+                }
+            }
+        } catch (err) {
+            console.error("Lỗi đọc nhiệt độ:", err);
+        }
+    }
+
+    // Tự động cập nhật nhiệt độ mỗi 5 giây
+    setInterval(fetchTemperature, 5000);
+</script>
+
+</body>
+</html>
