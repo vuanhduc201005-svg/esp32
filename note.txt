@@ -260,3 +260,4 @@ void loop() {
 }
 //E:\arduino-cli.exe compile --fqbn esp32:esp32:esp32 E:\fishfeeder\esp32 --output-dir E:\fishfeeder\esp32\build
 .\cloudflared.exe tunnel --url http://localhost:8080
+E:\arduino-cli.exe upload -p COM7 --fqbn esp32:esp32:esp32 .

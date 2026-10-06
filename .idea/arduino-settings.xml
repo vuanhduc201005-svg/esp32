@@ -4,6 +4,5 @@
     <option name="arduinoCliPath" value="E:\arduino-cli.exe" />
     <option name="comPort" value="COM7" />
     <option name="serialPort" value="COM7" />
-    <option name="monitorResetOnConnect" value="false" />
   </component>
 </project>

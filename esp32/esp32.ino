@@ -10,7 +10,7 @@
 const char* WIFI_SSID = "Galaxy A15 78E1";
 const char* WIFI_PASS = "88888888";
 
-const char* SERVER_URL = "https://candles-findlaw-spies-reaction.trycloudflare.com/api/devices/temperature";
+const char* SERVER_URL = "https://mart-comparison-polls-libraries.trycloudflare.com/api/devices/temperature";
 const char* API_KEY = "fish-secret-123";
 
 // ==================== GPIO PIN ====================
@@ -55,15 +55,31 @@ void closeDoors() {
     isOpen = false;
 }
 
+// ==================== HÀM KẾT NỐI WIFI ĐÃ FIX ====================
 void connectWiFi() {
+    Serial.println("\n--- DANG KET NOI WIFI ---");
+    WiFi.disconnect(true); // Xoá session Wi-Fi cũ bị kẹt
+    delay(500);
+
     WiFi.mode(WIFI_STA);
     WiFi.begin(WIFI_SSID, WIFI_PASS);
-    Serial.print("Connecting WiFi");
-    while (WiFi.status() != WL_CONNECTED) {
+
+    int timeout = 0;
+    // Cho phép chờ tối đa 30 lần x 500ms = 15 giây
+    while (WiFi.status() != WL_CONNECTED && timeout < 30) {
         delay(500);
         Serial.print(".");
+        timeout++;
     }
-    Serial.println("\nWiFi Connected! IP: " + WiFi.localIP().toString());
+
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("\n[OK] WiFi Connected! IP: " + WiFi.localIP().toString());
+    } else {
+        Serial.println("\n[LOI] Khong the ket noi Wi-Fi!");
+        Serial.print("Ma trang thai WiFi Status: ");
+        Serial.println(WiFi.status());
+        // Ma loi: 1 = Khong tim thay SSID, 4 = Sai MPT/Loi ket noi, 6 = Mat ket noi
+    }
 }
 
 bool readTemperature(float &out) {
@@ -133,7 +149,6 @@ void setup() {
     sensors.begin();
 
     // CẤU HÌNH XUNG PWM CHUẨN CHO ESP32 SERVO (500us - 2400us)
-    // Giúp Servo nhận đúng dải góc 0 - 180 độ không bị trượt/kẹt
     servoLeft.setPeriodHertz(50);
     servoRight.setPeriodHertz(50);
 
@@ -148,18 +163,23 @@ void setup() {
 
 void loop() {
     if (WiFi.status() != WL_CONNECTED) {
-        connectWiFi();
+        // Nếu mất Wi-Fi, thử kết nối lại sau mỗi chu kỳ
+        static unsigned long lastReconnect = 0;
+        if (millis() - lastReconnect >= 10000) {
+            lastReconnect = millis();
+            connectWiFi();
+        }
+    } else {
+        // 2. GỬI PING VỀ SERVER (3 GIÂY / LẦN) KHI CÓ WIFI
+        if (millis() - lastSend >= SEND_INTERVAL) {
+            lastSend = millis();
+            sendTemperatureAndCheckCommand();
+        }
     }
 
-    // 1. TỰ ĐỘNG ĐÓNG CỬA SAU 10 GIÂY
+    // 1. TỰ ĐỘNG ĐÓNG CỬA SAU 10 GIÂY (Chạy độc lập không phụ thuộc WiFi)
     if (isOpen && (millis() - openStartTime >= AUTO_CLOSE_TIMEOUT)) {
         Serial.println("-> [TIMEOUT 10s] Tu dong kich hoat DONG CUA!");
         closeDoors();
-    }
-
-    // 2. GỬI PING VỀ SERVER (3 GIÂY / LẦN)
-    if (millis() - lastSend >= SEND_INTERVAL) {
-        lastSend = millis();
-        sendTemperatureAndCheckCommand();
     }
 }
