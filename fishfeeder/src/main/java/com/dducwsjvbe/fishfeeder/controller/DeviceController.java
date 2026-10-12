@@ -2,6 +2,7 @@ package com.dducwsjvbe.fishfeeder.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -54,6 +55,7 @@ public class DeviceController {
     /**
      * 2. Web POST vào đây khi người dùng nhấn "MỞ CỬA" hoặc "ĐÓNG NGAY"
      */
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @PostMapping("/control-servo")
     public ResponseEntity<Map<String, Object>> controlServo(
             @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey,

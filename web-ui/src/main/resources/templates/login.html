@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+
+    <link rel="stylesheet"
+          th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
+
+    <style>
+
+        body {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed, #9333ea);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .login-card {
+            width: 430px;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, .2);
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: #4f46e5;
+            border-radius: 50%;
+            margin: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 35px;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: gray;
+            margin-bottom: 25px;
+        }
+
+        .form-control {
+            height: 48px;
+            border-radius: 10px;
+        }
+
+        .btn {
+            height: 48px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        #loading {
+            display: none;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="login-card">
+
+    <div class="logo">
+        📚
+    </div>
+
+    <h2>Welcome Back</h2>
+
+    <div class="subtitle">
+        Sign in to continue
+    </div>
+
+    <div id="error" class="alert alert-danger d-none"></div>
+
+    <form id="loginForm">
+
+        <div class="mb-3">
+
+            <label class="form-label">Username</label>
+
+            <input
+                    id="username"
+                    class="form-control"
+                    type="text"
+                    required>
+
+        </div>
+
+        <div class="mb-4">
+
+            <label class="form-label">Password</label>
+
+            <input
+                    id="password"
+                    class="form-control"
+                    type="password"
+                    required>
+
+        </div>
+
+        <button
+                id="loginBtn"
+                class="btn btn-primary w-100"
+                type="submit">
+
+            Login
+
+        </button>
+
+        <button
+                id="loading"
+                class="btn btn-primary w-100"
+                disabled>
+
+            Logging in...
+
+        </button>
+
+    </form>
+
+    <hr>
+
+    <div class="text-center">
+
+        <a
+                href="http://localhost:8180/realms/dducwsjvbe/account"
+                class="text-decoration-none">
+
+            Register
+
+        </a>
+
+        |
+
+        <a
+                href="http://localhost:8180/realms/dducwsjvbe/account"
+                class="text-decoration-none">
+
+            Forgot Password
+
+        </a>
+
+    </div>
+
+</div>
+
+<script>
+
+    const form = document.getElementById("loginForm");
+    const error = document.getElementById("error");
+
+    const loginBtn = document.getElementById("loginBtn");
+    const loading = document.getElementById("loading");
+
+    form.addEventListener("submit", async function (e) {
+
+        e.preventDefault();
+
+        error.classList.add("d-none");
+
+        loginBtn.style.display = "none";
+        loading.style.display = "block";
+
+        const username = document.getElementById("username").value.trim();
+
+        const password = document.getElementById("password").value;
+
+        try {
+
+            const response = await fetch("/login", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                credentials: "include",
+
+                body: JSON.stringify({
+
+                    username: username,
+                    password: password
+
+                })
+
+            });
+
+            if (!response.ok) {
+
+                let message = "Login failed.";
+
+                try {
+
+                    message = await response.text();
+
+                } catch (e) {
+                }
+
+                error.innerHTML = message;
+                error.classList.remove("d-none");
+
+                loginBtn.style.display = "block";
+                loading.style.display = "none";
+
+                return;
+            }
+
+            window.location.href = "/home";
+
+        } catch (e) {
+
+            error.innerHTML = "Cannot connect to server.";
+
+            error.classList.remove("d-none");
+
+            loginBtn.style.display = "block";
+            loading.style.display = "none";
+
+        }
+
+    });
+
+</script>
+
+<script th:src="@{/webjars/bootstrap/js/bootstrap.bundle.min.js}"></script>
+
+</body>
+
+</html>

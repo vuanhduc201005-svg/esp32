@@ -1,0 +1,32 @@
+server:
+  port: 2509
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+keycloak:
+  url: http://localhost:8180
+  realm: dducwsjvbe
+  client-id: dducwsjvbe_app
+  client-secret: WoZYF4a1w4hIPrq6laxLR28HlNqOGhcK
+
+GatewayPort:
+  url: http://localhost:8081
+
+fishfeeder:
+  api-key: fish-secret-123
+
+
+Monitoring:
+  url: http://localhost:3000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always

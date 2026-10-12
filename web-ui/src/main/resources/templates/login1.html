@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org">
+
+<head>
+
+    <meta charset="UTF-8">
+    <title>Login</title>
+
+    <link rel="stylesheet"
+          th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
+
+    <style>
+
+        body {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed, #9333ea);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .login-card {
+
+            width: 430px;
+            background: #fff;
+
+            padding: 40px;
+
+            border-radius: 20px;
+
+            box-shadow: 0 15px 40px rgba(0, 0, 0, .25);
+
+        }
+
+        .logo {
+
+            width: 80px;
+            height: 80px;
+
+            background: #4f46e5;
+
+            color: #fff;
+
+            border-radius: 50%;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            margin: auto;
+            margin-bottom: 20px;
+
+            font-size: 35px;
+
+        }
+
+        h2 {
+
+            text-align: center;
+            font-weight: bold;
+
+        }
+
+        .subtitle {
+
+            text-align: center;
+            color: gray;
+            margin-bottom: 25px;
+
+        }
+
+        .form-control {
+
+            height: 48px;
+
+            border-radius: 10px;
+
+        }
+
+        .btn {
+
+            height: 48px;
+
+            border-radius: 10px;
+
+            font-weight: bold;
+
+        }
+
+        .btn-login {
+
+            background: #4f46e5;
+            color: white;
+
+        }
+
+        .btn-login:hover {
+
+            background: #4338ca;
+            color: white;
+
+        }
+
+        #loading {
+
+            display: none;
+
+        }
+
+    </style>
+    <script th:inline="javascript">
+        const KEYCLOAK_URL = /*[[${KeycloakUrl}]]*/ "";
+    </script>
+
+</head>
+
+<body>
+
+<div class="login-card">
+
+    <div class="logo">
+
+        📚
+
+    </div>
+
+    <h2>Welcome Back</h2>
+
+    <div class="subtitle">
+
+        Sign in to continue
+
+    </div>
+
+    <div id="error"
+         class="alert alert-danger d-none">
+    </div>
+
+    <form id="loginForm">
+
+        <div class="mb-3">
+
+            <label class="form-label">
+
+                Username
+
+            </label>
+
+            <input
+
+                    id="username"
+
+                    class="form-control"
+
+                    type="text"
+
+                    required>
+
+        </div>
+
+        <div class="mb-4">
+
+            <label class="form-label">
+
+                Password
+
+            </label>
+
+            <input
+
+                    id="password"
+
+                    class="form-control"
+
+                    type="password"
+
+                    required>
+
+        </div>
+
+        <button
+
+                id="loginBtn"
+
+                class="btn btn-login w-100"
+
+                type="submit">
+
+            Login
+
+        </button>
+
+        <button
+
+                id="loading"
+
+                class="btn btn-secondary w-100"
+
+                disabled>
+
+            Logging in...
+
+        </button>
+
+    </form>
+
+    <hr>
+
+    <div class="text-center">
+
+        <a th:href="${KeycloakUrl + '/realms/dducwsjvbe/account'}">
+            Register
+        </a>
+        <!--        <a-->
+
+        <!--                href="https://awesome-bouquet-gazette-nearby.trycloudflare.com/realms/dducwsjvbe/account">-->
+
+        <!--            Register-->
+
+        <!--        </a>-->
+
+        |
+
+        <!--        <a-->
+
+        <!--                href="https://awesome-bouquet-gazette-nearby.trycloudflare.com/realms/dducwsjvbe/account">-->
+
+        <!--            Forgot Password-->
+
+        <!--        </a>-->
+        <a th:href="${KeycloakUrl + '/realms/dducwsjvbe/account'}">
+            Forgot Password
+        </a>
+
+    </div>
+
+</div>
+
+<script>
+    //khai báo nút
+    const form = document.getElementById("loginForm");
+
+    const loginBtn = document.getElementById("loginBtn");
+
+    const loading = document.getElementById("loading");
+
+    const error = document.getElementById("error");
+    //khai báo nút
+
+    form.addEventListener("submit", async function (e) {
+
+//ngăn browser reload lại page
+        e.preventDefault();
+//ngăn browser reload lại page
+
+        //nếu login sai và login lại thì ẩn đi thông báo lỗi fail trước đó
+        error.classList.add("d-none");
+        //nếu login sai và login lại thì ẩn đi thông báo lỗi fail trước đó
+
+        //khi hệ thống đang xử lý thì khóa nút loginBtn
+        loginBtn.style.display = "none";
+        //khi hệ thống đang xử lý thì khóa nút loginBtn
+
+//hiện hiệu ứng loading
+        loading.style.display = "block";
+//hiện hiệu ứng loading
+
+        const username = document.getElementById("username").value.trim();
+
+        const password = document.getElementById("password").value;
+
+        try {
+
+            const response = await fetch("/login", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                credentials: "include",
+
+                body: JSON.stringify({
+
+                    username: username,
+
+                    password: password
+
+                })
+
+            });
+
+            if (!response.ok) {
+//trả ra lỗi mặc định nếu ko đọc đc lỗi từ server
+                let message = "Login failed";
+
+                try {
+                    const errorData = await response.json();
+                    if (errorData && errorData.message) {
+                        message = errorData.message;
+                    }
+                    // message = await response.text(); đọc lỗi dạng text dù trả ra json nghĩa là in ra cả json ra
+
+                } catch (e) {
+                    // Nếu server không trả JSON hợp lệ (ví dụ lỗi 502, timeout...),
+                    // giữ nguyên message mặc định "Login failed"
+                    console.error("Không parse được JSON lỗi:", e);
+                }
+
+                error.textContent = message;
+
+                error.classList.remove("d-none");
+
+                loginBtn.style.display = "block";
+
+                loading.style.display = "none";
+
+                return;
+
+            }
+// .body(response.getUser()) nên user là UserInfo
+            const user = await response.json();
+
+            console.log(user);
+
+            console.log(user.username);
+
+            console.log(user.roles);
+
+            if (user.roles.includes("ADMIN")) {
+                window.location.href = "/admin";
+            }  else if (user.roles.includes("STAFF")){
+                window.location.href = "/staff";
+            }
+            else if (user.roles.includes("USER")) {
+                window.location.href = "/user";
+            }
+        } catch (err) {
+//lỗi call api,mạng
+            console.error(err);
+
+            error.innerHTML = "Cannot connect to server.";
+
+            error.classList.remove("d-none");
+
+            loginBtn.style.display = "block";
+
+            loading.style.display = "none";
+
+        }
+
+    });
+
+</script>
+
+<script th:src="@{/webjars/bootstrap/js/bootstrap.bundle.min.js}"></script>
+
+</body>
+
+</html>

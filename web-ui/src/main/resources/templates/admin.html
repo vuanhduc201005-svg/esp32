@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+
+    <link rel="stylesheet"
+          th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
+
+    <style>
+
+        body{
+            background:#f5f6fa;
+        }
+
+        .sidebar{
+
+            width:240px;
+            height:100vh;
+
+            background:#212529;
+
+            position:fixed;
+
+            color:white;
+
+        }
+
+        .sidebar h3{
+
+            padding:25px;
+
+            text-align:center;
+
+            border-bottom:1px solid #444;
+
+        }
+
+        .sidebar a{
+
+            display:block;
+
+            color:white;
+
+            text-decoration:none;
+
+            padding:15px 25px;
+
+        }
+
+        .sidebar a:hover{
+
+            background:#495057;
+
+        }
+
+        .content{
+
+            margin-left:240px;
+
+            padding:30px;
+
+        }
+
+        .card{
+
+            border:none;
+
+            border-radius:15px;
+
+            box-shadow:0 4px 10px rgba(0,0,0,.1);
+
+        }
+
+    </style>
+    <script th:inline="javascript">
+        const KEYCLOAK_URL = /*[[${KeycloakUrl}]]*/ "";
+    </script>
+    <script th:inline="javascript">
+        const LOGGING_URL = /*[[${LoggingUrl}]]*/ "";
+    </script>
+    <script th:inline="javascript">
+        const MONITORING_URL = /*[[${MonitoringUrl}]]*/ "";
+    </script>
+
+</head>
+
+<body>
+
+<div class="sidebar">
+
+    <h3>📚 System Admin Home</h3>
+    <a th:href="@{/parking-lot/control}">parking lot control</a>
+
+    <a th:href="${KeycloakUrl+'/admin/master/console/'}">User Management</a>
+
+    <a th:href="${MonitoringUrl}">Monitor The System</a>
+
+    <a href="/logout">Logout</a>
+
+</div>
+
+<div class="content">
+
+    <div class="container-fluid">
+
+        <h2 class="mb-4">
+
+            Welcome System Admin
+
+        </h2>
+
+
+    </div>
+
+</div>
+
+<script th:src="@{/webjars/bootstrap/js/bootstrap.bundle.min.js}"></script>
+
+</body>
+
+</html>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Cho Ăn Tự Động - ESP32</title>
+    <title>Hệ Thống Bãi Xe Thoong Minh - ESP32</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #eef2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
@@ -28,10 +28,10 @@
 <body>
 
 <div class="card">
-    <h2>Điều Khiển Cho Ăn Tự Động</h2>
+    <h2>Điều Khiển Bãi Xe Tự Động</h2>
 
     <div class="temp-container">
-        <div>Nhiệt độ bể cá hiện tại</div>
+        <div>Nhiệt độ bãi xe hiện tại</div>
         <div class="temp-display"><span id="tempVal">--</span> <span class="unit">°C</span></div>
     </div>
 
@@ -49,8 +49,9 @@
 </div>
 
 <script>
-    const BASE_URL = "https://mart-comparison-polls-libraries.trycloudflare.com/api/devices";
-    const API_KEY = "fish-secret-123";
+    // Gọi về chính web-ui (cùng origin). Web-ui sẽ gắn Bearer token từ cookie
+    // rồi chuyển tiếp qua API Gateway.
+    const BASE_URL = "/api/devices";
 
     let countdownInterval = null;
     let secondsLeft = 10;
@@ -62,12 +63,20 @@
         try {
             const res = await fetch(`${BASE_URL}/control-servo`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-API-KEY': API_KEY
-                },
+                credentials: 'same-origin',   // gửi cookie access_token / refresh_token
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: actionName })
             });
+
+            if (res.status === 401) {
+                statusEl.innerText = "Phiên đăng nhập hết hạn, đang chuyển về trang đăng nhập...";
+                setTimeout(() => window.location.href = "/", 1500);
+                return;
+            }
+            if (res.status === 403) {
+                statusEl.innerText = "Bạn không có quyền điều khiển (cần ADMIN hoặc STAFF)!";
+                return;
+            }
 
             if (res.ok) {
                 if (actionName === 'open') {
@@ -114,8 +123,12 @@
     async function fetchTemperature() {
         try {
             const res = await fetch(`${BASE_URL}/temperature`, {
-                headers: { 'X-API-KEY': API_KEY }
+                credentials: 'same-origin'
             });
+            if (res.status === 401) {
+                window.location.href = "/";
+                return;
+            }
             if (res.ok) {
                 const data = await res.json();
                 if (data.temperature !== null && data.temperature !== undefined) {
