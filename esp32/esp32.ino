@@ -5,18 +5,28 @@
 #include <DallasTemperature.h>
 #include <ArduinoJson.h>
 #include <ESP32Servo.h>
+#include <SPI.h>      // [RFID] THEM MOI
+#include <MFRC522.h>  // [RFID] THEM MOI (thu vien "MFRC522" cua GithubCommunity)
 
 // ==================== CẤU HÌNH ====================
 const char* WIFI_SSID = "Galaxy A15 78E1";
 const char* WIFI_PASS = "88888888";
 
-const char* SERVER_URL = "https://mart-comparison-polls-libraries.trycloudflare.com/api/devices/temperature";
+const char* SERVER_URL = "https://course-trade-nails-situated.trycloudflare.com/api/devices/temperature";
 const char* API_KEY = "fish-secret-123";
 
 // ==================== GPIO PIN ====================
 const int ONE_WIRE_PIN = 4;
 const int SERVO_LEFT_PIN  = 18;
 const int SERVO_RIGHT_PIN = 19;
+
+// ==================== [RFID] CHAN RC522 - THEM MOI ====================
+// Khong dung SPI mac dinh (18/19/23) vi 18, 19 dang gan cho servo -> dung SPI tuy chinh
+const int RFID_SCK_PIN  = 14;
+const int RFID_MISO_PIN = 25;
+const int RFID_MOSI_PIN = 13;
+const int RFID_SS_PIN   = 5;   // SDA / SS
+const int RFID_RST_PIN  = 27;
 
 // ==================== OBJECTS & VARS ====================
 OneWire oneWire(ONE_WIRE_PIN);
@@ -32,6 +42,19 @@ unsigned long lastSend = 0;
 bool isOpen = false;
 unsigned long openStartTime = 0;
 const unsigned long AUTO_CLOSE_TIMEOUT = 10000; // 10 giây
+
+// ==================== [RFID] BIEN RFID - THEM MOI ====================
+MFRC522 mfrc522(RFID_SS_PIN, RFID_RST_PIN);
+unsigned long lastCardTime = 0;
+const unsigned long CARD_COOLDOWN = 1500; // chong quet lap lien tuc
+
+// Danh sach the duoc phep (UID 4 byte). Quet the 1 lan, xem UID tren Serial Monitor roi dien vao day.
+const byte AUTHORIZED_UIDS[][4] = {
+    {0x11, 0xDA, 0x42, 0x02},
+    {0xC6, 0x8F, 0xB2, 0xE3},
+    {0xC0, 0x9C, 0xB6, 0x5C}
+};
+const int AUTHORIZED_COUNT = sizeof(AUTHORIZED_UIDS) / sizeof(AUTHORIZED_UIDS[0]);
 
 // ==================== HÀM ĐIỀU KHIỂN SERVO FIX LỖI ====================
 void openDoors() {
@@ -144,6 +167,48 @@ void sendTemperatureAndCheckCommand() {
     delete client;
 }
 
+// ==================== [RFID] HAM RFID - THEM MOI ====================
+bool isAuthorizedCard() {
+    if (mfrc522.uid.size != 4) return false;
+    for (int i = 0; i < AUTHORIZED_COUNT; i++) {
+        bool match = true;
+        for (byte j = 0; j < 4; j++) {
+            if (mfrc522.uid.uidByte[j] != AUTHORIZED_UIDS[i][j]) {
+                match = false;
+                break;
+            }
+        }
+        if (match) return true;
+    }
+    return false;
+}
+
+void checkRFID() {
+    if (millis() - lastCardTime < CARD_COOLDOWN) return;
+    if (!mfrc522.PICC_IsNewCardPresent()) return;
+    if (!mfrc522.PICC_ReadCardSerial()) return;
+
+    lastCardTime = millis();
+
+    Serial.print("-> [RFID] UID: ");
+    for (byte i = 0; i < mfrc522.uid.size; i++) {
+        if (mfrc522.uid.uidByte[i] < 0x10) Serial.print("0");
+        Serial.print(mfrc522.uid.uidByte[i], HEX);
+        Serial.print(" ");
+    }
+    Serial.println();
+
+    if (isAuthorizedCard()) {
+        Serial.println("-> [RFID] The hop le -> MO cua");
+        openDoors(); // tu dong dong lai sau 10s nhu cu
+    } else {
+        Serial.println("-> [RFID] The KHONG hop le!");
+    }
+
+    mfrc522.PICC_HaltA();
+    mfrc522.PCD_StopCrypto1();
+}
+
 void setup() {
     Serial.begin(115200);
     sensors.begin();
@@ -159,6 +224,11 @@ void setup() {
     closeDoors();
 
     connectWiFi();
+
+    // [RFID] THEM MOI: khoi tao RC522
+    SPI.begin(RFID_SCK_PIN, RFID_MISO_PIN, RFID_MOSI_PIN, RFID_SS_PIN);
+    mfrc522.PCD_Init();
+    Serial.println("[RFID] RC522 san sang, hay quet the...");
 }
 
 void loop() {
@@ -182,4 +252,7 @@ void loop() {
         Serial.println("-> [TIMEOUT 10s] Tu dong kich hoat DONG CUA!");
         closeDoors();
     }
+
+    // [RFID] THEM MOI: quet the (chay doc lap, khong can WiFi / Web / Java)
+    checkRFID();
 }

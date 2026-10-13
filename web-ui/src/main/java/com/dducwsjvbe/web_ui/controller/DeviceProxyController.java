@@ -36,16 +36,24 @@ public class DeviceProxyController {
     @Value("${fishfeeder.api-key}")
     private String apiKey;
 
+    /** Chỉ lấy status + body, KHÔNG chép header của gateway (tránh trùng Transfer-Encoding: chunked -> 502). */
+    private ResponseEntity<String> clean(ResponseEntity<String> res) {
+        return ResponseEntity.status(res.getStatusCode())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(res.getBody());
+    }
+
     @PostMapping("/control-servo")
     public ResponseEntity<String> controlServo(@RequestBody Map<String, String> body) {
         try {
-            return restClient.post()
+            ResponseEntity<String> res = restClient.post()
                     .uri(gatewayUrl + "/api/devices/control-servo")
                     .header(API_KEY_HEADER, apiKey)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(body)
                     .retrieve()
                     .toEntity(String.class);
+            return clean(res);
         } catch (HttpStatusCodeException e) {
             // giữ nguyên status từ gateway (401/403/400/429...) để JS xử lý
             log.warn("control-servo failed: {} {}", e.getStatusCode(), e.getResponseBodyAsString());
@@ -59,11 +67,12 @@ public class DeviceProxyController {
     @GetMapping("/temperature")
     public ResponseEntity<String> temperature() {
         try {
-            return restClient.method(HttpMethod.GET)
+            ResponseEntity<String> res = restClient.method(HttpMethod.GET)
                     .uri(gatewayUrl + "/api/devices/temperature")
                     .header(API_KEY_HEADER, apiKey)
                     .retrieve()
                     .toEntity(String.class);
+            return clean(res);
         } catch (HttpStatusCodeException e) {
             return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBodyAsString());
         } catch (RestClientException e) {
