@@ -12,7 +12,7 @@
 const char* WIFI_SSID = "Galaxy A15 78E1";
 const char* WIFI_PASS = "88888888";
 
-const char* SERVER_URL = "https://course-trade-nails-situated.trycloudflare.com/api/devices/temperature";
+const char* SERVER_URL = "https://interstate-forward-surname-homes.trycloudflare.com/api/devices/temperature";
 const char* API_KEY = "fish-secret-123";
 
 // ==================== GPIO PIN ====================
@@ -59,7 +59,8 @@ const int AUTHORIZED_COUNT = sizeof(AUTHORIZED_UIDS) / sizeof(AUTHORIZED_UIDS[0]
 // ==================== HÀM ĐIỀU KHIỂN SERVO FIX LỖI ====================
 void openDoors() {
     Serial.println("-> [SERVO] Dang MO cua (90 do)...");
-
+    if (!servoLeft.attached())  servoLeft.attach(SERVO_LEFT_PIN, 500, 2400);
+    if (!servoRight.attached()) servoRight.attach(SERVO_RIGHT_PIN, 500, 2400);
     // Gửi góc 90 độ
     servoLeft.write(90);
     servoRight.write(90);
@@ -70,7 +71,8 @@ void openDoors() {
 
 void closeDoors() {
     Serial.println("-> [SERVO] Dang DONG cua (0 do)...");
-
+    if (!servoLeft.attached())  servoLeft.attach(SERVO_LEFT_PIN, 500, 2400);
+    if (!servoRight.attached()) servoRight.attach(SERVO_RIGHT_PIN, 500, 2400);
     // Ép Servo quay về góc 0 độ
     servoLeft.write(0);
     servoRight.write(0);
@@ -228,6 +230,7 @@ void setup() {
     // [RFID] THEM MOI: khoi tao RC522
     SPI.begin(RFID_SCK_PIN, RFID_MISO_PIN, RFID_MOSI_PIN, RFID_SS_PIN);
     mfrc522.PCD_Init();
+    mfrc522.PCD_DumpVersionToSerial();   // <-- thêm dòng này
     Serial.println("[RFID] RC522 san sang, hay quet the...");
 }
 
