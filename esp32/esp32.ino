@@ -9,10 +9,10 @@
 #include <MFRC522.h>  // [RFID] THEM MOI (thu vien "MFRC522" cua GithubCommunity)
 
 // ==================== CẤU HÌNH ====================
-const char* WIFI_SSID = "Galaxy A15 78E1";
-const char* WIFI_PASS = "88888888";
+const char* WIFI_SSID = "Wokwi-GUEST";
+const char* WIFI_PASS = "";
 
-const char* SERVER_URL = "https://interstate-forward-surname-homes.trycloudflare.com/api/devices/temperature";
+const char* SERVER_URL = "https://budget-entrepreneurs-default-refined.trycloudflare.com/api/devices/temperature";
 const char* API_KEY = "fish-secret-123";
 
 // ==================== GPIO PIN ====================

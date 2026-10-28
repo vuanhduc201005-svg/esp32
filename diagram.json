@@ -4,25 +4,28 @@
   "editor": "wokwi",
   "parts": [
     { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
-    { "type": "wokwi-ds18b20", "id": "temp1", "top": -110, "left": -130, "attrs": {} },
-    { "type": "wokwi-resistor", "id": "r1", "top": -60, "left": -60, "attrs": { "value": "4700" } },
-    { "type": "wokwi-servo", "id": "servo1", "top": 180, "left": -140, "attrs": {} },
-    { "type": "wokwi-servo", "id": "servo2", "top": 180, "left": 180, "attrs": {} }
+    { "type": "wokwi-servo", "id": "servo1", "top": 180.4, "left": -144, "attrs": {} },
+    {
+      "type": "board-mfrc522",
+      "id": "rfid1",
+      "top": -154.88039185827967,
+      "left": -386.86540615049955,
+      "attrs": {}
+    }
   ],
   "connections": [
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
     [ "esp:RX", "$serialMonitor:TX", "", [] ],
-    [ "temp1:VCC", "esp:3V3", "red", [ "v0" ] ],
-    [ "temp1:GND", "esp:GND.1", "black", [ "v0" ] ],
-    [ "temp1:DQ", "esp:4", "green", [ "v0" ] ],
-    [ "r1:1", "esp:3V3", "red", [ "v0" ] ],
-    [ "r1:2", "temp1:DQ", "green", [ "v0" ] ],
     [ "servo1:PWM", "esp:18", "orange", [ "v0" ] ],
     [ "servo1:V+", "esp:5V", "red", [ "v0" ] ],
     [ "servo1:GND", "esp:GND.2", "black", [ "v0" ] ],
-    [ "servo2:PWM", "esp:19", "orange", [ "v0" ] ],
-    [ "servo2:V+", "esp:5V", "red", [ "v0" ] ],
-    [ "servo2:GND", "esp:GND.2", "black", [ "v0" ] ]
+    [ "rfid1:SDA", "esp:5", "blue", [ "v0" ] ],
+    [ "rfid1:SCK", "esp:14", "yellow", [ "v0" ] ],
+    [ "rfid1:MOSI", "esp:13", "purple", [ "v0" ] ],
+    [ "rfid1:MISO", "esp:25", "white", [ "v0" ] ],
+    [ "rfid1:RST", "esp:27", "gray", [ "v0" ] ],
+    [ "rfid1:3.3V", "esp:3V3", "red", [ "v0" ] ],
+    [ "rfid1:GND", "esp:GND.1", "black", [ "v0" ] ]
   ],
   "dependencies": {}
 }

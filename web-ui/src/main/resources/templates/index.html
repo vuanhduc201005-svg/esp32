@@ -23,6 +23,15 @@
 
         .status-box { margin-top: 20px; font-size: 14px; color: #555; }
         .countdown { font-weight: bold; color: #d9534f; }
+
+        /* [THÊM MỚI] Khung hiển thị số chỗ trống */
+        .slots-container { background: #f8f9fa; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
+        .slots-display { font-size: 44px; font-weight: bold; color: #28a745; }
+        .slots-display.full { color: #dc3545; }
+        .btn-out { background-color: #f39c12; color: white; }
+        .btn-out:hover { background-color: #d68910; }
+        .btn-group { flex-wrap: wrap; }
+        .btn-group .btn-close { flex-basis: 100%; }
     </style>
 </head>
 <body>
@@ -35,8 +44,19 @@
         <div class="temp-display"><span id="tempVal">--</span> <span class="unit">°C</span></div>
     </div>
 
+    <!-- [THÊM MỚI] Hiển thị số chỗ trống -->
+    <div class="slots-container">
+        <div>Số chỗ trống</div>
+        <div class="slots-display" id="slotsBox">
+            <span id="slotsVal">--</span> / <span id="slotsTotal">--</span>
+        </div>
+    </div>
+
     <div class="btn-group">
-        <button id="btnOpen" class="btn btn-open" onclick="sendAction('open')">MỞ CỬA</button>
+        <!-- [THAY ĐỔI] "MỞ CỬA" thành "MỞ CỬA VÀO", gửi action open_in -->
+        <button id="btnOpen" class="btn btn-open" onclick="sendAction('open_in')">MỞ CỬA VÀO</button>
+        <!-- [THÊM MỚI] Nút MỞ CỬA RA, gửi action open_out -->
+        <button id="btnOpenOut" class="btn btn-out" onclick="sendAction('open_out')">MỞ CỬA RA</button>
         <button id="btnClose" class="btn btn-close" onclick="sendAction('close')" disabled>ĐÓNG NGAY</button>
     </div>
 
@@ -56,9 +76,21 @@
     let countdownInterval = null;
     let secondsLeft = 10;
 
+    // [THÊM MỚI] Cập nhật số chỗ trống lên giao diện
+    function updateSlots(available, total) {
+        if (available === undefined || available === null) return;
+        document.getElementById('slotsVal').innerText = available;
+        if (total !== undefined && total !== null) {
+            document.getElementById('slotsTotal').innerText = total;
+        }
+        document.getElementById('slotsBox').classList.toggle('full', available <= 0);
+    }
+
     async function sendAction(actionName) {
         const statusEl = document.getElementById('statusMsg');
-        statusEl.innerText = actionName === 'open' ? "Đang gửi lệnh MỞ..." : "Đang gửi lệnh ĐÓNG...";
+        // [THAY ĐỔI] thông báo theo 3 loại action
+        const labels = { open_in: "MỞ CỬA VÀO", open_out: "MỞ CỬA RA", close: "ĐÓNG" };
+        statusEl.innerText = "Đang gửi lệnh " + labels[actionName] + "...";
 
         try {
             const res = await fetch(`${BASE_URL}/control-servo`, {
@@ -78,11 +110,21 @@
                 return;
             }
 
+            // [THÊM MỚI] 409 = hết chỗ (cửa vào) hoặc bãi trống hoàn toàn (cửa ra)
+            if (res.status === 409) {
+                const data = await res.json();
+                statusEl.innerText = data.error;
+                updateSlots(data.available_slots);
+                return;
+            }
+
             if (res.ok) {
-                if (actionName === 'open') {
-                    setDoorUIOpen();
-                } else {
+                const data = await res.json();       // [THÊM MỚI]
+                updateSlots(data.available_slots);   // [THÊM MỚI] cập nhật số chỗ ngay
+                if (actionName === 'close') {
                     setDoorUIClose();
+                } else {
+                    setDoorUIOpen(actionName);       // [THAY ĐỔI] truyền loại cửa vào/ra
                 }
             } else {
                 statusEl.innerText = "Lỗi khi gửi lệnh tới Server!";
@@ -93,9 +135,12 @@
         }
     }
 
-    function setDoorUIOpen() {
-        document.getElementById('statusMsg').innerText = "Trạng thái: Đã gửi lệnh MỞ (Chờ ESP32 nhận)";
+    function setDoorUIOpen(actionName) {
+        // [THAY ĐỔI] hiện đúng loại cửa đang mở
+        const dir = actionName === 'open_out' ? "RA" : "VÀO";
+        document.getElementById('statusMsg').innerText = "Trạng thái: Đã gửi lệnh MỞ CỬA " + dir + " (Chờ ESP32 nhận)";
         document.getElementById('btnOpen').disabled = true;
+        document.getElementById('btnOpenOut').disabled = true;   // [THÊM MỚI]
         document.getElementById('btnClose').disabled = false;
         document.getElementById('timerMsg').style.display = "block";
 
@@ -116,6 +161,7 @@
         clearInterval(countdownInterval);
         document.getElementById('statusMsg').innerText = "Trạng thái: Cửa đang ĐÓNG";
         document.getElementById('btnOpen').disabled = false;
+        document.getElementById('btnOpenOut').disabled = false;  // [THÊM MỚI]
         document.getElementById('btnClose').disabled = true;
         document.getElementById('timerMsg').style.display = "none";
     }
@@ -134,14 +180,17 @@
                 if (data.temperature !== null && data.temperature !== undefined) {
                     document.getElementById('tempVal').innerText = data.temperature;
                 }
+                // [THÊM MỚI] đồng bộ số chỗ trống từ server
+                updateSlots(data.available_slots, data.total_slots);
             }
         } catch (err) {
             console.error("Lỗi đọc nhiệt độ:", err);
         }
     }
 
-    // Tự động cập nhật nhiệt độ mỗi 5 giây
+    // Tự động cập nhật nhiệt độ và số chỗ trống mỗi 5 giây
     setInterval(fetchTemperature, 5000);
+    fetchTemperature(); // [THÊM MỚI] gọi ngay khi mở trang để thấy số chỗ liền
 </script>
 
 </body>
