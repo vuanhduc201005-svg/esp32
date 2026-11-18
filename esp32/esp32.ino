@@ -12,28 +12,25 @@
 const char* WIFI_SSID = "Wokwi-GUEST";
 const char* WIFI_PASS = "";
 
-const char* SERVER_URL = "https://budget-entrepreneurs-default-refined.trycloudflare.com/api/devices/temperature";
+const char* SERVER_URL = "https://aged-singing-antonio-marble.trycloudflare.com/api/devices/temperature";
 const char* API_KEY = "fish-secret-123";
 
 // ==================== GPIO PIN ====================
 const int ONE_WIRE_PIN = 4;
-const int SERVO_LEFT_PIN  = 18;
-const int SERVO_RIGHT_PIN = 19;
+const int SERVO_PIN    = 25;
 
 // ==================== [RFID] CHAN RC522 - THEM MOI ====================
-// Khong dung SPI mac dinh (18/19/23) vi 18, 19 dang gan cho servo -> dung SPI tuy chinh
-const int RFID_SCK_PIN  = 14;
-const int RFID_MISO_PIN = 25;
-const int RFID_MOSI_PIN = 13;
-const int RFID_SS_PIN   = 5;   // SDA / SS
-const int RFID_RST_PIN  = 27;
+const int RFID_SCK_PIN  = 21;
+const int RFID_MISO_PIN = 18;
+const int RFID_MOSI_PIN = 19;
+const int RFID_SS_PIN   = 22;   // SDA / SS
+const int RFID_RST_PIN  = 5;
 
 // ==================== OBJECTS & VARS ====================
 OneWire oneWire(ONE_WIRE_PIN);
 DallasTemperature sensors(&oneWire);
 
-Servo servoLeft;
-Servo servoRight;
+Servo servoDoor;
 
 const unsigned long SEND_INTERVAL = 3000; // Giảm xuống 3s để phản hồi lệnh Web nhanh hơn
 unsigned long lastSend = 0;
@@ -50,6 +47,7 @@ const unsigned long CARD_COOLDOWN = 1500; // chong quet lap lien tuc
 
 // Danh sach the duoc phep (UID 4 byte). Quet the 1 lan, xem UID tren Serial Monitor roi dien vao day.
 const byte AUTHORIZED_UIDS[][4] = {
+    {0x01, 0x02, 0x03, 0x04},
     {0x11, 0xDA, 0x42, 0x02},
     {0xC6, 0x8F, 0xB2, 0xE3},
     {0xC0, 0x9C, 0xB6, 0x5C}
@@ -59,11 +57,9 @@ const int AUTHORIZED_COUNT = sizeof(AUTHORIZED_UIDS) / sizeof(AUTHORIZED_UIDS[0]
 // ==================== HÀM ĐIỀU KHIỂN SERVO FIX LỖI ====================
 void openDoors() {
     Serial.println("-> [SERVO] Dang MO cua (90 do)...");
-    if (!servoLeft.attached())  servoLeft.attach(SERVO_LEFT_PIN, 500, 2400);
-    if (!servoRight.attached()) servoRight.attach(SERVO_RIGHT_PIN, 500, 2400);
+    if (!servoDoor.attached()) servoDoor.attach(SERVO_PIN, 500, 2400);
     // Gửi góc 90 độ
-    servoLeft.write(90);
-    servoRight.write(90);
+    servoDoor.write(90);
 
     isOpen = true;
     openStartTime = millis(); // Reset lại đếm giờ 10s
@@ -71,11 +67,9 @@ void openDoors() {
 
 void closeDoors() {
     Serial.println("-> [SERVO] Dang DONG cua (0 do)...");
-    if (!servoLeft.attached())  servoLeft.attach(SERVO_LEFT_PIN, 500, 2400);
-    if (!servoRight.attached()) servoRight.attach(SERVO_RIGHT_PIN, 500, 2400);
+    if (!servoDoor.attached()) servoDoor.attach(SERVO_PIN, 500, 2400);
     // Ép Servo quay về góc 0 độ
-    servoLeft.write(0);
-    servoRight.write(0);
+    servoDoor.write(0);
 
     isOpen = false;
 }
@@ -216,11 +210,8 @@ void setup() {
     sensors.begin();
 
     // CẤU HÌNH XUNG PWM CHUẨN CHO ESP32 SERVO (500us - 2400us)
-    servoLeft.setPeriodHertz(50);
-    servoRight.setPeriodHertz(50);
-
-    servoLeft.attach(SERVO_LEFT_PIN, 500, 2400);
-    servoRight.attach(SERVO_RIGHT_PIN, 500, 2400);
+    servoDoor.setPeriodHertz(50);
+    servoDoor.attach(SERVO_PIN, 500, 2400);
 
     // Mặc định đóng cửa khi vừa bật nguồn
     closeDoors();
