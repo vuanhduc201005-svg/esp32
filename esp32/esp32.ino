@@ -12,19 +12,19 @@
 const char* WIFI_SSID = "Wokwi-GUEST";
 const char* WIFI_PASS = "";
 
-const char* SERVER_URL = "https://aged-singing-antonio-marble.trycloudflare.com/api/devices/temperature";
+const char* SERVER_URL = "https://wish-issue-lisa-charles.trycloudflare.com/api/devices/temperature";
 const char* API_KEY = "fish-secret-123";
 
 // ==================== GPIO PIN ====================
 const int ONE_WIRE_PIN = 4;
-const int SERVO_PIN    = 25;
+const int SERVO_PIN = 25;
 
 // ==================== [RFID] CHAN RC522 - THEM MOI ====================
-const int RFID_SCK_PIN  = 21;
+const int RFID_SCK_PIN = 21;
 const int RFID_MISO_PIN = 18;
 const int RFID_MOSI_PIN = 19;
-const int RFID_SS_PIN   = 22;   // SDA / SS
-const int RFID_RST_PIN  = 5;
+const int RFID_SS_PIN = 22;   // SDA / SS
+const int RFID_RST_PIN = 5;
 
 // ==================== OBJECTS & VARS ====================
 OneWire oneWire(ONE_WIRE_PIN);
@@ -139,6 +139,7 @@ void sendTemperatureAndCheckCommand() {
         http.addHeader("X-API-KEY", API_KEY);
         http.addHeader("Connection", "close");
 
+        Serial.println("-> [HTTP] Dang gui len server...");
         int code = http.POST(body);
         if (code > 0) {
             String response = http.getString();
@@ -156,6 +157,10 @@ void sendTemperatureAndCheckCommand() {
                     closeDoors();
                 }
             }
+            else{
+                Serial.printf("[JSON LOI] %s\n", err.c_str());            }
+        } else {
+            Serial.printf("[HTTP LOI] code=%d (%s)\n", code, http.errorToString(code).c_str());
         }
         http.end();
     }
